@@ -1,14 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Stream } from "@/lib/streams";
 
-// Minimal types for the YouTube IFrame Player API
 type YTPlayer = {
   playVideo: () => void;
   pauseVideo: () => void;
+  nextVideo: () => void;
   setVolume: (v: number) => void;
   getVolume: () => number;
   loadVideoById: (id: string) => void;
+  loadPlaylist: (opts: {
+    list: string;
+    listType: "playlist" | "user_uploads" | "search";
+    index?: number;
+    startSeconds?: number;
+  }) => void;
   destroy: () => void;
   getPlayerState: () => number;
 };
@@ -17,7 +24,7 @@ type YTNamespace = {
   Player: new (
     el: string | HTMLElement,
     opts: {
-      videoId: string;
+      videoId?: string;
       playerVars?: Record<string, string | number>;
       events?: {
         onReady?: (e: { target: YTPlayer }) => void;
@@ -26,14 +33,6 @@ type YTNamespace = {
       };
     }
   ) => YTPlayer;
-  PlayerState: {
-    UNSTARTED: -1;
-    ENDED: 0;
-    PLAYING: 1;
-    PAUSED: 2;
-    BUFFERING: 3;
-    CUED: 5;
-  };
 };
 
 declare global {
@@ -80,16 +79,23 @@ function loadYouTubeApi(): Promise<YTNamespace> {
   });
 }
 
-export type PlayerStatus = "idle" | "loading" | "ready" | "error";
+export type PlayerStatus = "loading" | "ready" | "error";
 
-export function useYouTubePlayer(videoId: string, holderId: string) {
+function applyStream(player: YTPlayer, stream: Stream) {
+  if (stream.kind === "playlist") {
+    player.loadPlaylist({ list: stream.listId, listType: "playlist" });
+  } else {
+    player.loadVideoById(stream.id);
+  }
+}
+
+export function useYouTubePlayer(initial: Stream, holderId: string) {
   const playerRef = useRef<YTPlayer | null>(null);
+  const initialRef = useRef(initial);
   const [status, setStatus] = useState<PlayerStatus>("loading");
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolumeState] = useState(60);
-  const currentVideoIdRef = useRef(videoId);
 
-  // Initialize player once
   useEffect(() => {
     let cancelled = false;
 
@@ -101,10 +107,8 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
           setStatus("error");
           return;
         }
-        // Side effect: instantiates the player on the holder element.
-        // The actual player ref comes through the onReady callback.
-        new YT.Player(holderId, {
-          videoId: currentVideoIdRef.current,
+        const init = initialRef.current;
+        const constructorOpts: ConstructorParameters<typeof YT.Player>[1] = {
           playerVars: {
             autoplay: 0,
             controls: 0,
@@ -119,11 +123,17 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
               if (cancelled) return;
               playerRef.current = e.target;
               e.target.setVolume(60);
+              // For playlist initial, also load the playlist now
+              if (init.kind === "playlist") {
+                e.target.loadPlaylist({
+                  list: init.listId,
+                  listType: "playlist",
+                });
+              }
               setStatus("ready");
             },
             onStateChange: (e) => {
               if (cancelled) return;
-              // 1 = playing, 2 = paused, 0 = ended, 3 = buffering
               if (e.data === 1) setIsPlaying(true);
               else if (e.data === 2 || e.data === 0) setIsPlaying(false);
             },
@@ -132,7 +142,13 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
               setStatus("error");
             },
           },
-        });
+        };
+        // For video/live kind, set videoId in constructor.
+        // For playlist, let onReady call loadPlaylist (constructor doesn't accept list directly here cleanly).
+        if (init.kind !== "playlist") {
+          constructorOpts.videoId = init.id;
+        }
+        new YT.Player(holderId, constructorOpts);
       })
       .catch(() => {
         if (!cancelled) setStatus("error");
@@ -147,8 +163,7 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
       }
       playerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentional: instantiate once, change video via loadStream
+  }, [holderId]);
 
   const play = useCallback(() => {
     playerRef.current?.playVideo();
@@ -171,9 +186,18 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
     playerRef.current?.setVolume(clamped);
   }, []);
 
-  const loadStream = useCallback((newId: string) => {
-    currentVideoIdRef.current = newId;
-    playerRef.current?.loadVideoById(newId);
+  const loadStream = useCallback((stream: Stream) => {
+    if (!playerRef.current) return;
+    applyStream(playerRef.current, stream);
+  }, []);
+
+  const skipTrack = useCallback(() => {
+    // Only meaningful for playlists; harmless on videos
+    try {
+      playerRef.current?.nextVideo();
+    } catch {
+      // ignore
+    }
   }, []);
 
   return {
@@ -185,5 +209,6 @@ export function useYouTubePlayer(videoId: string, holderId: string) {
     toggle,
     setVolume,
     loadStream,
+    skipTrack,
   };
 }
