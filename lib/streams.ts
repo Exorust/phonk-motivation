@@ -91,7 +91,7 @@ export const STREAMS: Stream[] = [
   },
 ];
 
-export const DEFAULT_STREAM = STREAMS[0];
+export const DEFAULT_STREAM = STREAMS[6]; // SIGMA · MoonDeity
 
 export function streamKey(s: Stream): string {
   return s.kind === "playlist" ? `pl:${s.listId}` : `${s.kind}:${s.id}`;

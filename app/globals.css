@@ -106,62 +106,37 @@ body {
   overflow: hidden;
 }
 
-/* RAIN — diagonal streaks, low opacity */
-.theme-rain::before,
-.theme-rain::after {
-  content: "";
-  position: absolute;
-  inset: -50%;
-  background-image: repeating-linear-gradient(
-    105deg,
-    transparent 0,
-    transparent 8px,
-    rgba(255, 255, 255, 0.08) 8px,
-    rgba(255, 255, 255, 0.08) 9px,
-    transparent 9px,
-    transparent 24px
-  );
-  animation: rain-fall 1.2s linear infinite;
-}
-.theme-rain::after {
-  animation-duration: 0.8s;
-  animation-delay: -0.4s;
-  opacity: 0.6;
-  background-image: repeating-linear-gradient(
-    105deg,
-    transparent 0,
-    transparent 14px,
-    rgba(255, 255, 255, 0.05) 14px,
-    rgba(255, 255, 255, 0.05) 15px,
-    transparent 15px,
-    transparent 38px
-  );
-}
-@keyframes rain-fall {
-  0% {
-    transform: translate(0, 0);
-  }
-  100% {
-    transform: translate(-30px, 80px);
-  }
-}
+/* RAIN — rendered via canvas (RainCanvas component) */
 
-/* WIND — soft horizontal drift */
-.theme-wind::before {
+/* WIND — two layers of slow horizontal streaks */
+.theme-wind::before,
+.theme-wind::after {
   content: "";
   position: absolute;
   inset: -25%;
   background-image: repeating-linear-gradient(
-    87deg,
+    90deg,
     transparent 0,
-    transparent 80px,
-    rgba(255, 255, 255, 0.06) 80px,
-    rgba(255, 255, 255, 0.06) 81px,
-    transparent 81px,
-    transparent 220px
+    transparent 55px,
+    rgba(255, 255, 255, 0.07) 55px,
+    rgba(255, 255, 255, 0.07) 57px,
+    transparent 57px,
+    transparent 150px
   );
-  animation: wind-drift 11s linear infinite;
-  filter: blur(0.5px);
+  animation: wind-drift 24s linear infinite;
+}
+.theme-wind::after {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 110px,
+    rgba(255, 255, 255, 0.04) 110px,
+    rgba(255, 255, 255, 0.04) 113px,
+    transparent 113px,
+    transparent 280px
+  );
+  animation-duration: 38s;
+  animation-delay: -14s;
 }
 @keyframes wind-drift {
   0% {

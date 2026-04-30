@@ -28,7 +28,7 @@ export default function MiniPlayer({
   const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className="fixed bottom-20 right-6 sm:bottom-24 sm:right-10 z-30 max-w-[18rem]">
+    <div className="fixed bottom-20 right-6 sm:bottom-24 sm:right-10 z-50 max-w-[18rem]">
       {expanded ? (
         <div className="flex flex-col gap-4 items-end bg-background/85 backdrop-blur-md border border-subtle p-4 rounded-sm">
           <div className="flex items-center gap-4 self-stretch justify-between">
